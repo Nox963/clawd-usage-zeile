@@ -1,0 +1,34 @@
+name: Fehler melden
+description: Etwas funktioniert nicht wie beschrieben
+title: "Fehler: "
+labels: ["fehler"]
+body:
+  - type: textarea
+    id: was
+    attributes:
+      label: Was ist passiert?
+      description: Was du erwartet hast und was stattdessen zu sehen war.
+    validations:
+      required: true
+  - type: input
+    id: fassung
+    attributes:
+      label: Fassung von Claude Code
+      description: Ausgabe von `claude --version`, oder die Fassung der Desktop-App.
+    validations:
+      required: true
+  - type: dropdown
+    id: oberflaeche
+    attributes:
+      label: Wo läuft Claude Code?
+      options:
+        - Desktop-App, Code-Bereich
+        - Terminal
+        - anderes
+    validations:
+      required: true
+  - type: textarea
+    id: bild
+    attributes:
+      label: Screenshot
+      description: Ein Bildschirmfoto der Zeile hilft am meisten. Bitte keine persönlichen Inhalte mitschicken.

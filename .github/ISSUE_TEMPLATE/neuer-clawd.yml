@@ -1,0 +1,43 @@
+name: Neuer Clawd
+description: Eine neue Szene für Clawd wünschen
+title: "Neuer Clawd: "
+labels: ["neuer-clawd"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Danke für den Wunsch. Clawd wird im festen Pixel-Stil gezeichnet, in einer Zeile,
+        die nur 28 Pixel hoch ist. Kleine, klare Tätigkeiten mit wenigen Gegenständen
+        funktionieren am besten. Vorhandene Szenen stehen im Ordner `szenen/`.
+  - type: input
+    id: taetigkeit
+    attributes:
+      label: Was soll Clawd tun?
+      description: Eine Tätigkeit in wenigen Worten.
+      placeholder: gießt Blumen
+    validations:
+      required: true
+  - type: textarea
+    id: gegenstaende
+    attributes:
+      label: Was gehört dazu?
+      description: Gegenstände, Kleidung, Tiere oder Umgebung.
+      placeholder: eine grüne Gießkanne, zwei Blumentöpfe
+  - type: textarea
+    id: handlung
+    attributes:
+      label: Was macht er zwischendurch?
+      description: Jede Szene hat eine kurze Handlung, die ab und zu abläuft. Optional.
+      placeholder: eine Blume wächst, Clawd freut sich
+  - type: textarea
+    id: vorbild
+    attributes:
+      label: Vorbild oder Bild
+      description: Ein Link oder ein Bild, wenn es das erklärt. Optional.
+  - type: checkboxes
+    id: hinweis
+    attributes:
+      label: Hinweis
+      options:
+        - label: Ich weiß, dass dies ein Fanprojekt ist und Wünsche nicht garantiert umgesetzt werden.
+          required: true

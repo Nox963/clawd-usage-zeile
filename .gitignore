@@ -1,0 +1,9 @@
+# Typen, die Claude Code beim Laden selbst in den Mod-Ordner schreibt
+.claude-plugin/types/
+
+# Dateien von Betriebssystem und Editor
+.DS_Store
+Thumbs.db
+*.log
+.mcpb-cache/
+node_modules/

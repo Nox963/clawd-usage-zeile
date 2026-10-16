@@ -1,0 +1,13 @@
+{
+  "name": "clawd-usage-zeile",
+  "description": "Usage-Zeile mit Clawd: Limits, Kontext und ein animierter Pixel-Clawd über dem Eingabefeld von Claude Code. Inoffizielles Fanprojekt.",
+  "owner": {
+    "name": "Nox963"
+  },
+  "plugins": [
+    {
+      "name": "usage-zeile",
+      "source": "./"
+    }
+  ]
+}

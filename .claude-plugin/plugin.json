@@ -1,0 +1,10 @@
+{
+  "name": "usage-zeile",
+  "version": "1.0.0",
+  "description": "Zeigt über dem Eingabefeld 5-Stunden-Limit, Wochenlimit und Kontext, daneben einen animierten Clawd mit wählbaren Szenen, und unter jeder Antwort Dauer und Beitrag zum Kontext.",
+  "author": {
+    "name": "Nox963"
+  },
+  "license": "MIT",
+  "types": "./types/index.d.ts"
+}
