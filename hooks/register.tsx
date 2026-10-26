@@ -3,6 +3,7 @@ import type { EngineInterface, Register, SessionContextUsage, SessionRateLimit }
 
 import type { Messung, Szene } from '../types'
 import { antwortzeile } from './antwortzeile'
+import { PANEL, punktePanel } from './punkte'
 
 const messung = atom({ plugin: 'usage-zeile', key: 'messung' } as const, null)
 const jetzt = atom({ plugin: 'usage-zeile', key: 'jetzt' } as const, 0)
@@ -243,9 +244,20 @@ function beschreibung(sz: Szene): string {
 
 // Keine festen Farben: Text ohne `color` und die Themenfarbe `text` folgen dem hellen
 // oder dunklen Thema. Der Rand ist so schwarz im hellen und weiss im dunklen Modus.
+// Die vier Teile des Mods lassen sich einzeln abschalten, bei der Installation aus GitHub oder
+// spaeter ueber /config (userConfig in plugin.json, Wunsch des Nutzers, 26.10.2026). Jeder Teil
+// ist an, solange seine Einstellung nicht ausdruecklich false ist.
+export function teile(options: Readonly<Record<string, unknown>> | undefined) {
+  const an = (k: string) => options?.[k] !== false
+  return { zahlen: an('zahlen'), clawd: an('clawd'), antwortzeile: an('antwortzeile'), panel: an('panel') }
+}
+
 export const register: Register = (on, options) => {
+  const mit = teile(options)
   // Die Zeile unter jeder Antwort (Dauer und Beitrag zum Kontext) steht in antwortzeile.ts
   antwortzeile(on, options)
+  // Das Panel mit den offenen Punkten der AUFTRAG.md steht in punkte.tsx
+  if (mit.panel) punktePanel(on, options)
 
   on('session.start', async ($, e, next) => {
     const ergebnis = await next(e)
@@ -283,6 +295,8 @@ export const register: Register = (on, options) => {
 
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     if (e.props.hasSurvey) return next(e)
+    // Ohne Zahlen, Clawd und Panel hat die Zeile nichts zu zeigen
+    if (!mit.zahlen && !mit.clawd && !mit.panel) return next(e)
 
     const istAn = await read($, an)
     const elemente = $.ui.resolve(e)
@@ -322,7 +336,7 @@ export const register: Register = (on, options) => {
       </Button>
     )
     const trenner = (i: number) => <Text key={`t${i}`} dimColor>{`${NBSP}${NBSP}·${NBSP}${NBSP}`}</Text>
-    const zeile = m === null
+    const zeile = !mit.zahlen ? [] : m === null
       ? [<Text key="leer" dimColor>Usage: noch keine Messung</Text>]
       : [
           ...(m.limits.length === 0
@@ -353,20 +367,28 @@ export const register: Register = (on, options) => {
         <Box marginLeft={1} flexShrink={1} minWidth={0} height={1} overflow="hidden" alignItems="center">{zeile}</Box>
         <Box flexGrow={1} minWidth={2} />
         {/* Waehrend die Auswahl offen ist, ruht Clawd: das spart eine grosse Grafik */}
-        {Svg && szene && !offen
-          ? <Box flexShrink={0} marginRight={3}>
+        {mit.clawd && Svg && szene && !offen
+          ? <Box flexShrink={0} marginRight={5}>
               <Svg source={laeuftJetzt ? szene.svg : standbild(szene.svg)} alt={`Clawd: ${szene.titel}`}
                 width={Math.round((szene.breite * CLAWD_HOEHE) / szene.hoehe)} height={CLAWD_HOEHE} />
             </Box>
           : null}
-        <Box position="absolute" top={0} right={0}>
-          <Button key="punkt" plain dimColor onPress={() => klappe($, !offen)}>•</Button>
+        {/* Rechts uebereinander: oben der Punkt fuer die Clawd-Auswahl, darunter ≡ fuer das Panel
+            mit den offenen Punkten der AUFTRAG.md (16.10.2026). Bis 26.10.2026 standen beide
+            nebeneinander, ≡ links vom Punkt. Eine Fassung mit zwei Zeilen hoher Kopfzeile, damit
+            die beiden Luft haben, wollte der Nutzer nicht: Die Zeile bleibt flach, die Knoepfe
+            stehen etwas eng. */}
+        <Box position="absolute" top={0} right={0} flexDirection="column" alignItems="center">
+          {mit.clawd ? <Button key="punkt" plain dimColor onPress={() => klappe($, !offen)}>•</Button> : null}
+          {mit.panel
+            ? <Button key="punkte" plain dimColor onPress={() => $.ui.open({ id: PANEL, title: 'Offene Punkte' })}>≡</Button>
+            : null}
         </Box>
       </Box>
     )
     // Spaltenrichtung, damit die Kopfzeile die ganze Breite nimmt und Clawd rechts am Rand
     // steht. In Zeilenrichtung war sie nur so breit wie ihr Inhalt (14.10.2026).
-    if (!offen) return <Box {...rahmen} flexDirection="column">{kopf}</Box>
+    if (!offen || !mit.clawd) return <Box {...rahmen} flexDirection="column">{kopf}</Box>
 
     // Die Auswahl, aufgeklappt unter der Zahlenzeile
     const gewaehlt = await read($, clawd)

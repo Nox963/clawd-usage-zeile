@@ -1,6 +1,6 @@
 import { expect, mock, test } from 'claude-code/testing'
 
-import { blaettere } from '../hooks/register'
+import { blaettere, teile } from '../hooks/register'
 
 const BAND = {
   plugin: 'usage-zeile',
@@ -299,4 +299,20 @@ test('das Mausrad blaettert die Karten reihenweise, die Kopfzeile bleibt', async
   expect(blaettere(5, -2, 13)).toBe(4)
   expect(blaettere(0, 1, 2)).toBe(0)
   expect(blaettere(4, 0, 13)).toBe(4)
+})
+
+test('jeder Teil ist an, bis seine Einstellung ausdruecklich false ist', async () => {
+  expect(teile(undefined)).toEqual({ zahlen: true, clawd: true, antwortzeile: true, panel: true })
+  expect(teile({ clawd: false, panel: false })).toEqual({ zahlen: true, clawd: false, antwortzeile: true, panel: false })
+  expect(teile({ zahlen: 'nein' })).toEqual({ zahlen: true, clawd: true, antwortzeile: true, panel: true })
+})
+
+test('abgeschaltete Teile fehlen in der Zeile', { options: { clawd: false, panel: false } }, async ($, on) => {
+  await starte($, on)
+  const ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect(await ui.find({ text: /🕖/ })).toBeDefined()
+  expect((await clawds(ui)).length).toBe(0)
+  expect(await ui.find({ key: 'punkt' })).toBeUndefined()
+  expect(await ui.find({ key: 'punkte' })).toBeUndefined()
+  await ui.unmount()
 })

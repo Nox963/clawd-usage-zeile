@@ -1,6 +1,6 @@
 import { expect, mock, test } from 'claude-code/testing'
 
-import { beitrag, dauer, VERBEN } from '../hooks/antwortzeile'
+import { beitrag, dauer, uhrzeit, VERBEN } from '../hooks/antwortzeile'
 
 // Die Sitzung, wie der Mod sie misst: Kontext nach der letzten Anfrage und die Schaetzung
 // nach dem Verdichten.
@@ -11,7 +11,7 @@ const NACHRICHT = { role: 'user' as const, text: 'Zusammenfassung', toolUses: []
 async function starte($: Parameters<Parameters<typeof test>[1]>[0], on: Parameters<Parameters<typeof test>[1]>[1],
   z: Zustand) {
   mock.store(on, { 'szenen-test': {} })
-  mock.clock(on, { now: Date.parse('2026-10-15T08:00:00Z') })
+  const uhr = mock.clock(on, { now: Date.parse('2026-10-15T08:00:00Z') })
   on('session.start', (_$, e) => ({ cwd: e.cwd }))
   on('session.compact', () => { z.tokens = undefined; return { messages: [NACHRICHT] } })
   on('session.usage', (_$, e) => ({ value: {
@@ -27,9 +27,18 @@ async function starte($: Parameters<Parameters<typeof test>[1]>[0], on: Paramete
   } }))
   on('turn.start', (_$, e) => ({ turnId: e.turnId }))
   on('turn.complete', (_$, e) => ({ text: e.answer }))
+  on('prompt.submit', (_$, e) => ({ text: e.text, origin: e.origin }))
   // So zeichnet die App einen Antwortblock: sein Text, sonst nichts
   on('ui.render', { component: 'AssistantMessage' }, (_$, e) => ({ type: 'Text' as const, children: [e.props.text] }))
   await $.session.start({ cwd: '.', surface: 'desktop', isInteractive: true })
+  return uhr
+}
+
+// Eine Eingabe, woher auch immer, und die Runde, die sie startet
+async function runde($: Parameters<Parameters<typeof test>[1]>[0], turnId: string,
+  herkunft: 'composer' | 'task-notification' = 'composer') {
+  await $.prompt.submit({ text: 'los', wait: false, origin: { kind: herkunft } } as never)
+  await $.turn.start({ text: herkunft === 'composer' ? 'los' : '', turnId })
 }
 
 // Der letzte Textblock einer Antwort, wie die App ihn zeichnet
@@ -42,14 +51,17 @@ async function zeileUnter($: Parameters<Parameters<typeof test>[1]>[0], text: st
 }
 
 const ANTWORT = { answer: 'Fertig.', durationMs: 184_000, isAborted: false, turnId: 't1', reason: 'answer' as const }
-const ZEILE = new RegExp(`^Claude (${VERBEN.join('|')}) for 3m 4s · \\+8,4k$`)
+// 08:00 UTC plus 3m 4s, in der Zeitzone des Rechners
+const DONE = uhrzeit(Date.parse('2026-10-15T08:03:04Z'))
+const ZEILE = new RegExp(`^Claude (${VERBEN.join('|')}) for 3m 4s · \\+8,4k · done ${DONE}$`)
 
 test('unter dem letzten Textblock stehen Verb, Dauer und Beitrag zum Kontext', async ($, on) => {
   const z: Zustand = { tokens: 100_000, geschaetzt: 0 }
-  await starte($, on, z)
-  await $.turn.start({ text: 'los', turnId: 't1' })
+  const uhr = await starte($, on, z)
+  await runde($, 't1')
   // 108.400 gemessen plus "Fertig." (7 Zeichen ≈ 2 Tokens) minus 100.000
   z.tokens = 108_400
+  await uhr.advance(184_000)
   const r = await $.turn.complete(ANTWORT)
   // der Text der Antwort bleibt, es kommt kein eingeklappter Hinweis dazu
   expect(r.text).toBe('Fertig.')
@@ -71,51 +83,75 @@ test('unter dem letzten Textblock stehen Verb, Dauer und Beitrag zum Kontext', a
 
 test('ein langer Block wird an seinem Schluss erkannt, auch mit anderem Leerraum', async ($, on) => {
   const z: Zustand = { tokens: 100_000, geschaetzt: 0 }
-  await starte($, on, z)
+  const uhr = await starte($, on, z)
   const lang = 'Erster Absatz mit Inhalt. '.repeat(20) + '\n\nLetzter Satz der Antwort.'
-  await $.turn.start({ text: 'los', turnId: 't1' })
+  await runde($, 't1')
   z.tokens = 101_000
+  await uhr.advance(184_000)
   await $.turn.complete({ ...ANTWORT, answer: lang })
   expect(await zeileUnter($, lang.replace(/\n\n/g, '\n'))).toMatch(/^Claude .* for 3m 4s · \+/)
 })
 
-test('die naechste Antwort rechnet ab dem Stand nach der vorigen, nicht ab der Messung beim Start', async ($, on) => {
+test('ein neuer Auftrag rechnet ab dem Stand nach dem vorigen, nicht ab der Messung beim Start', async ($, on) => {
   const z: Zustand = { tokens: 100_000, geschaetzt: 0 }
-  await starte($, on, z)
-  await $.turn.start({ text: 'los', turnId: 't1' })
+  const uhr = await starte($, on, z)
+  await runde($, 't1')
   z.tokens = 108_400
+  await uhr.advance(184_000)
   await $.turn.complete(ANTWORT)                 // danach gilt 108.402
-  await $.turn.start({ text: 'weiter', turnId: 't2' })
+  await runde($, 't2')
   z.tokens = 120_400
+  await uhr.advance(12_000)
   await $.turn.complete({ ...ANTWORT, answer: 'Weiter.', turnId: 't2', durationMs: 12_000 })
-  expect(await zeileUnter($, 'Weiter.')).toMatch(/ for 12s · \+12k$/)
-  // die Zeile der ersten Antwort bleibt stehen
+  expect(await zeileUnter($, 'Weiter.')).toMatch(/ for 12s · \+12k · done /)
+  // die Zeile des ersten Auftrags bleibt stehen
   expect(await zeileUnter($, 'Fertig.')).toMatch(ZEILE)
+})
+
+test('Runden aus der Meldung eines Hintergrund-Agenten zaehlen zum selben Auftrag', async ($, on) => {
+  const z: Zustand = { tokens: 100_000, geschaetzt: 0 }
+  const uhr = await starte($, on, z)
+  await runde($, 't1')
+  z.tokens = 108_400
+  await uhr.advance(60_000)
+  await $.turn.complete(ANTWORT)
+  // der Agent arbeitet weiter, die Sitzung wartet; dann meldet er sich und startet eine Runde
+  await uhr.advance(30 * 60_000)
+  await runde($, 't2', 'task-notification')
+  z.tokens = 184_000
+  await uhr.advance(4 * 60_000 + 28_000)
+  await $.turn.complete({ ...ANTWORT, answer: 'Alles fertig.', turnId: 't2' })
+  // Gesamtzeit ab der Eingabe: 1 + 30 + 4 Minuten 28 Sekunden, Beitrag ab dem Stand davor
+  const ende = uhrzeit(Date.parse('2026-10-15T08:35:28Z'))
+  expect(await zeileUnter($, 'Alles fertig.')).toMatch(new RegExp(` for 35m 28s · \\+84k · done ${ende}$`))
+  // die Zwischenzeile der ersten Runde faellt weg
+  expect(await zeileUnter($, 'Fertig.')).toBeUndefined()
 })
 
 test('nach dem Verdichten waehrend der Antwort steht "verdichtet" statt einer Zahl', async ($, on) => {
   const z: Zustand = { tokens: 900_000, geschaetzt: 41_000 }
-  await starte($, on, z)
-  await $.turn.start({ text: 'los', turnId: 't1' })
+  const uhr = await starte($, on, z)
+  await runde($, 't1')
   await $.session.compact({ trigger: 'auto', messages: [NACHRICHT, NACHRICHT] })
   z.tokens = 60_000
+  await uhr.advance(184_000)
   await $.turn.complete(ANTWORT)
-  expect(await zeileUnter($, 'Fertig.')).toMatch(/ for 3m 4s · verdichtet$/)
-  // die Antwort danach rechnet wieder ab dem neuen Stand
-  await $.turn.start({ text: 'weiter', turnId: 't2' })
+  expect(await zeileUnter($, 'Fertig.')).toMatch(/ for 3m 4s · verdichtet · done /)
+  // der Auftrag danach rechnet wieder ab dem neuen Stand
+  await runde($, 't2')
   z.tokens = 61_498
   await $.turn.complete({ ...ANTWORT, answer: 'Weiter.', turnId: 't2' })
-  expect(await zeileUnter($, 'Weiter.')).toMatch(/ · \+1,5k$/)
+  expect(await zeileUnter($, 'Weiter.')).toMatch(/ · \+1,5k · done /)
 })
 
 test('nach /compact zwischen zwei Antworten zaehlt ab der Schaetzung', async ($, on) => {
   const z: Zustand = { tokens: 900_000, geschaetzt: 41_000 }
   await starte($, on, z)
   await $.session.compact({ trigger: 'manual', messages: [NACHRICHT, NACHRICHT] })
-  await $.turn.start({ text: 'los', turnId: 't1' })
+  await runde($, 't1')
   z.tokens = 44_998
   await $.turn.complete(ANTWORT)
-  expect(await zeileUnter($, 'Fertig.')).toMatch(/ · \+4k$/)
+  expect(await zeileUnter($, 'Fertig.')).toMatch(/ · \+4k · done /)
 })
 
 test('keine Zeile bei Subagenten, nach Abbruch und im Terminal', async ($, on) => {

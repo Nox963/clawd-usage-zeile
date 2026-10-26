@@ -1,10 +1,36 @@
 {
   "name": "usage-zeile",
-  "version": "1.0.0",
-  "description": "Zeigt über dem Eingabefeld 5-Stunden-Limit, Wochenlimit und Kontext, daneben einen animierten Clawd mit wählbaren Szenen, und unter jeder Antwort Dauer und Beitrag zum Kontext.",
+  "version": "1.1.0",
+  "description": "Zeigt über dem Eingabefeld 5-Stunden-Limit, Wochenlimit und Kontext, daneben einen animierten Clawd mit wählbaren Szenen, und unter der letzten Antwort eines Auftrags Dauer, Beitrag zum Kontext und Uhrzeit. Die Teile lassen sich einzeln abschalten.",
   "author": {
     "name": "Nox963"
   },
   "license": "MIT",
-  "types": "./types/index.d.ts"
+  "types": "./types/index.d.ts",
+  "userConfig": {
+    "zahlen": {
+      "type": "boolean",
+      "title": "Limits und Kontext",
+      "description": "5-Stunden-Limit, Wochenlimit und Kontext-Ring in der Zeile über dem Eingabefeld.",
+      "default": true
+    },
+    "clawd": {
+      "type": "boolean",
+      "title": "Clawd",
+      "description": "Animierter Clawd rechts in der Zeile, mit Auswahl der Szenen und Favoriten. Bewegt sich, solange Claude arbeitet.",
+      "default": true
+    },
+    "antwortzeile": {
+      "type": "boolean",
+      "title": "Zeile unter jeder Antwort",
+      "description": "Unter der letzten Antwort eines Auftrags: Dauer, Beitrag zum Kontext und Uhrzeit, etwa „Claude cooked for 3m 4s · +8,4k · done 23:02“.",
+      "default": true
+    },
+    "panel": {
+      "type": "boolean",
+      "title": "Panel „Offene Punkte“",
+      "description": "Knopf ≡ in der Zeile, öffnet neben dem Gespräch die offenen Pakete und Punkte der AUFTRAG.md im Arbeitsordner.",
+      "default": false
+    }
+  }
 }

@@ -18,8 +18,13 @@ animierten Clawd:
 * **Clawd** steht rechts und spielt die gewählte Szene, solange Claude arbeitet. Sonst
   steht er still.
 
-Unter jede fertige Antwort setzt der Mod außerdem eine Zeile wie
-`Claude cooked for 3m 4s · +8,4k`. Die Zahl ist der Beitrag der Antwort zum Kontext.
+Unter die letzte Antwort eines Auftrags setzt der Mod außerdem eine Zeile wie
+`Claude cooked for 45m 28s · +84k · done 23:02`. Die Zeit läuft von der eigenen Eingabe bis
+zum Ende, auch während Agenten im Hintergrund arbeiten. Die Zahl ist der Beitrag des Auftrags
+zum Kontext, `done` die Uhrzeit, zu der er fertig war.
+
+Auf Wunsch kommt ein Panel „Offene Punkte“ dazu. Es zeigt neben dem Gespräch die offenen
+Pakete und Punkte aus `AUFTRAG.md`-Dateien im Arbeitsordner.
 
 > **Inoffizielles Fanprojekt.** Dieser Mod ist nicht von Anthropic und steht in keiner
 > Verbindung zu Anthropic. Claude und Claude Code sind Marken von Anthropic. Clawd ist das
@@ -65,6 +70,20 @@ claude plugin install usage-zeile --marketplace Nox963/clawd-usage-zeile
 
 Danach Claude Code neu starten. Die Desktop-App ganz schließen, auch im Hintergrund.
 
+## Teile auswählen
+
+Der Mod besteht aus vier Teilen. Jeder lässt sich einzeln abschalten:
+
+| Einstellung | Teil | Voreinstellung |
+|---|---|---|
+| `zahlen` | Limits und Kontext-Ring in der Zeile | an |
+| `clawd` | animierter Clawd mit Auswahl der Szenen und Favoriten | an |
+| `antwortzeile` | Zeile unter der letzten Antwort eines Auftrags | an |
+| `panel` | Knopf ≡ und Panel „Offene Punkte“ | aus |
+
+Claude Code fragt die Einstellungen bei der Installation ab. Später ändert man sie im
+Terminal über `/config`, dort stehen sie unter `usage-zeile`. Danach lädt der Mod neu.
+
 ## Aktualisieren
 
 Neue Szenen und Verbesserungen kommen als neue Fassung. So holt man sie:
@@ -82,7 +101,8 @@ Danach Claude Code neu starten.
 ## Bedienung
 
 * **Schiebeschalter ganz links** schaltet die Zeile an und aus.
-* **Punkt oben rechts** klappt die Auswahl der Szenen auf. Jede Karte zeigt eine Vorschau.
+* **Punkt oben rechts** klappt die Auswahl der Szenen auf. Darunter steht **≡**, wenn das
+  Panel eingeschaltet ist. Es öffnet die offenen Punkte neben dem Gespräch. Jede Karte zeigt eine Vorschau.
   *Abspielen* zeigt den ganzen Ablauf, *Auswählen* übernimmt die Szene. Das Mausrad
   blättert die Karten.
 * **Stern auf einer Karte** macht die Szene zum Favoriten. Favoriten stehen oben.
@@ -91,10 +111,12 @@ Danach Claude Code neu starten.
 * Nach `/compact` oder `/clear` ist die Kontextzahl bis zur nächsten Antwort geschätzt und
   steht mit ≈ da.
 
-Der Mod merkt sich Schalter, Szene und Favoriten über Sitzungen hinweg. Drei kleine Dateien
-legt er dafür neben seinen eigenen Ordner: `usage-zeile-limits.json`,
-`usage-zeile-favoriten.json` und `usage-zeile-antwortzeilen.json`. Nach außen schickt er
-nichts.
+Der Mod merkt sich Schalter, Szene und Favoriten über Sitzungen hinweg. Ein paar kleine
+Dateien legt er dafür neben seinen eigenen Ordner: `usage-zeile-limits.json`,
+`usage-zeile-favoriten.json`, `usage-zeile-antwortzeilen.json` und
+`usage-zeile-herkunft.txt` (die Herkunft der letzten 50 Eingaben, zur Prüfung der Zeile unter
+der Antwort). Das Panel liest zusätzlich `usage-zeile-ordner.json`, falls vorhanden. Nach
+außen schickt der Mod nichts.
 
 ## Szenen
 
