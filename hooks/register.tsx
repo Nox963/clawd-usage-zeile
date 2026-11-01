@@ -46,18 +46,17 @@ const arbeitet = atom({ plugin: 'usage-zeile', key: 'arbeitet' } as const, false
 const agenten = atom({ plugin: 'usage-zeile', key: 'agenten' } as const, {})
 const AGENT_STILL = 10 * 60_000
 
-// Bei offener Auswahl bleibt die oberste Zeile stehen, das Mausrad blaettert die Karten
-// (Wunsch des Nutzers, 15.10.2026). Die App rollt nur die ganze Zeile, darum faengt der Mod
-// das Rad ab (ui.scroll), blaettert selbst eine Kartenreihe je Drehung und haelt das Fenster
-// der App auf Zeile 1. Ueber der Kopfzeile liegt dafuer eine leere Zeile: Stuende das Fenster
-// auf Zeile 0, meldete die App kein Rollen nach oben (erste Fassung, nach oben blockiert).
-const kartenStart = atom({ plugin: 'usage-zeile', key: 'kartenStart' } as const, 0)
+// Die Auswahl blaettert seitenweise per Klick: eine Seite sind zwei Kartenreihen, also sechs
+// Szenen, ◀ und ▶ rechts in der Kopfzeile, daneben "Page 1 of 4" (Wunsch des Nutzers,
+// 26.10.2026). Die Zeile ist damit nie hoeher als zwei Reihen, die App muss nichts rollen.
+// Vom 15. bis 26.10.2026 blaetterte das Mausrad reihenweise (ui.scroll abgefangen, Fenster der
+// App auf Zeile 1 unter einer leeren Zeile). Das ging, lief aber nie so ruhig wie gewuenscht.
+const seite = atom({ plugin: 'usage-zeile', key: 'seite' } as const, 0)
+const KARTEN_JE_SEITE = 6
 
-// Neue erste Kartenreihe nach einer Raddrehung um `by` Zeilen: eine Reihe je Drehung, nie
-// ueber die vorletzte Reihe hinaus, damit unten immer noch Karten stehen
-export function blaettere(start: number, by: number, reihen: number): number {
-  if (by === 0) return start
-  return Math.min(Math.max(0, reihen - 2), Math.max(0, start + Math.sign(by)))
+// Neue Seite nach einem Klick: eine weiter oder zurueck, nie vor die erste, nie hinter die letzte
+export function blaettere(aktuell: number, richtung: number, seiten: number): number {
+  return Math.min(Math.max(0, seiten - 1), Math.max(0, aktuell + Math.sign(richtung)))
 }
 
 // Standbild einer Szene: Jede Animation der Szenen sitzt direkt hinter dem Element, das sie
@@ -286,13 +285,6 @@ export const register: Register = (on, options) => {
     return ergebnis
   })
 
-  on('ui.scroll', async ($, e, next) => {
-    if (e.component !== 'AbovePrompt' || e.origin.kind !== 'person' || !(await read($, auswahlOffen))) return next(e)
-    const reihen = Math.ceil((await read($, szenen)).length / KARTEN_JE_REIHE)
-    await update($, kartenStart, s => blaettere(s ?? 0, e.by, reihen))
-    return next({ ...e, offset: 1 })
-  })
-
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     if (e.props.hasSurvey) return next(e)
     // Ohne Zahlen, Clawd und Panel hat die Zeile nichts zu zeigen
@@ -358,6 +350,12 @@ export const register: Register = (on, options) => {
         ]
 
     const offen = await read($, auswahlOffen)
+    const favs = await read($, favoriten)
+    // Favoriten zuerst in ihrer Reihenfolge, der Rest wie bisher (sort ist stabil)
+    const rang = (key: string) => { const i = favs.indexOf(key); return i < 0 ? 1e9 : i }
+    const sortiert = [...(await read($, szenen))].sort((a, b) => rang(a.key) - rang(b.key))
+    const seiten = Math.max(1, Math.ceil(sortiert.length / KARTEN_JE_SEITE))
+    const diese = Math.min(await read($, seite), seiten - 1)
     const laufendeAgenten = Object.values(await read($, agenten)).filter(t => nun - t < AGENT_STILL).length
     const laeuftJetzt = (await read($, arbeitet)) || laufendeAgenten > 0
     const kopf = (
@@ -371,6 +369,19 @@ export const register: Register = (on, options) => {
           ? <Box flexShrink={0} marginRight={5}>
               <Svg source={laeuftJetzt ? szene.svg : standbild(szene.svg)} alt={`Clawd: ${szene.titel}`}
                 width={Math.round((szene.breite * CLAWD_HOEHE) / szene.hoehe)} height={CLAWD_HOEHE} />
+            </Box>
+          : null}
+        {/* Bei offener Auswahl ruht Clawd, an seiner Stelle stehen die Knoepfe zum Blaettern.
+            Bis 26.10.2026 stand eine eigene Ueberschrift unter der Kopfzeile ("Welcher Clawd soll
+            in der Zeile leben?"). Die kostete eine Zeile, und die zweite Kartenreihe war unten
+            abgeschnitten. Hoeher als die halbe Fensterhoehe laesst die App die Zeile nicht werden. */}
+        {mit.clawd && offen && seiten > 1
+          ? <Box flexShrink={0} marginRight={5} alignItems="center" gap={1}>
+              <Button key="zurueck" plain dimColor={diese === 0}
+                onPress={() => update($, seite, s => blaettere(s ?? 0, -1, seiten))}>◀</Button>
+              <Text dimColor>{`Page${NBSP}${diese + 1}${NBSP}of${NBSP}${seiten}`}</Text>
+              <Button key="weiter" plain dimColor={diese === seiten - 1}
+                onPress={() => update($, seite, s => blaettere(s ?? 0, 1, seiten))}>▶</Button>
             </Box>
           : null}
         {/* Rechts uebereinander: oben der Punkt fuer die Clawd-Auswahl, darunter ≡ fuer das Panel
@@ -393,24 +404,13 @@ export const register: Register = (on, options) => {
     // Die Auswahl, aufgeklappt unter der Zahlenzeile
     const gewaehlt = await read($, clawd)
     const laeuft = await read($, spielt)
-    const favs = await read($, favoriten)
-    // Favoriten zuerst in ihrer Reihenfolge, der Rest wie bisher (sort ist stabil)
-    const rang = (key: string) => { const i = favs.indexOf(key); return i < 0 ? 1e9 : i }
-    const sortiert = [...(await read($, szenen))].sort((a, b) => rang(a.key) - rang(b.key))
-    const reihen = Math.ceil(sortiert.length / KARTEN_JE_REIHE)
-    const start = Math.min(await read($, kartenStart), Math.max(0, reihen - 2))
-    const alle = sortiert.slice(start * KARTEN_JE_REIHE)
+    const alle = sortiert.slice(diese * KARTEN_JE_SEITE, (diese + 1) * KARTEN_JE_SEITE)
     // Drei Karten je Reihe: die Breite der Zeile in Zeichen, abzueglich der Abstaende und
     // etwas Luft, weil die App Text schmaler misst, als sie ihn zeichnet
     const kartenBreite = Math.max(24, Math.floor((e.props.bodyColumns - KARTEN_JE_REIHE - 2) / KARTEN_JE_REIHE))
     return (
       <Box {...rahmen} flexDirection="column">
-        <Box key="luft" height={1} />
         <Box key="kopf" flexDirection="column">{kopf}</Box>
-        <Text>
-          <Text bold>Welcher Clawd soll in der Zeile leben?</Text>
-          {reihen > 2 ? <Text dimColor>{`   Reihe ${start + 1} von ${reihen}, weiter mit dem Mausrad`}</Text> : null}
-        </Text>
         {alle.length === 0 ? <Text dimColor>Im Ordner szenen\ liegen keine Szenen.</Text> : null}
         <Box flexDirection="row" flexWrap="wrap" gap={1}>
           {alle.map(sz => {
@@ -438,16 +438,18 @@ export const register: Register = (on, options) => {
                 {/* Kurz nur, was Clawd tut, hoechstens zwei Zeilen. Beim Abspielen der ganze Text mit Handlung. */}
                 {ganz
                   ? <Text dimColor wrap="wrap">{beschreibung(sz)}</Text>
-                  : <Box height={2} overflow="hidden"><Text dimColor wrap="wrap">{kurzText(sz)}</Text></Box>}
+                  : <Box height={2} overflow="hidden" flexDirection="column" justifyContent="flex-start">
+                      <Text dimColor wrap="wrap">{kurzText(sz)}</Text>
+                    </Box>}
                 <Box flexDirection="row" gap={1}>
                   <Button key={`wahl-${sz.key}`} variant={sz.key === gewaehlt ? 'primary' : 'secondary'}
                     onPress={() => waehle($, sz.key)}>
-                    {sz.key === gewaehlt ? 'Gewählt' : 'Auswählen'}
+                    {sz.key === gewaehlt ? 'Gewählt' : 'Use'}
                   </Button>
                   {Svg
                     ? <Button key={`spiel-${sz.key}`} variant="secondary"
                         onPress={() => update($, spielt, () => (ganz ? '' : sz.key))}>
-                        {ganz ? 'Stopp' : 'Abspielen'}
+                        {ganz ? 'Stopp' : 'Preview'}
                       </Button>
                     : null}
                 </Box>
@@ -567,7 +569,7 @@ async function waehle($: EngineInterface, key: string) {
 }
 
 async function klappe($: EngineInterface, auf: boolean) {
-  await update($, kartenStart, () => 0)
+  await update($, seite, () => 0)
   if (auf) {
     await ladeSzenen($)      // neue Dateien im Ordner erscheinen so sofort
     const favs = await gemerkteFavoriten($)
@@ -575,8 +577,6 @@ async function klappe($: EngineInterface, auf: boolean) {
   }
   await update($, spielt, () => '')
   await update($, auswahlOffen, () => auf)
-  // Das Fenster der App gleich auf die Kopfzeile stellen, die leere Zeile darueber verschwindet
-  if (auf) $.clock.after(150, () => void $.ui.scroll({ to: { key: 'kopf' }, block: 'start' }).catch(() => undefined))
 }
 
 // Liest alle Szenen aus dem Ordner szenen\. Eine Datei, die sich nicht lesen laesst, wird

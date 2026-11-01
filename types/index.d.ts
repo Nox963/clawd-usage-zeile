@@ -8,8 +8,8 @@ export type Messung = {
   geschaetzt?: boolean                                 // Kontext lokal geschaetzt, etwa nach /compact
 }
 
-// Eine Szene, wie sie als JSON-Datei in szenen\ liegt. Gebaut von
-// Desktop\Claude-Maskottchen\clawd\usage_zeile\baue_mod_daten.py.
+// Eine Szene, wie sie als JSON-Datei in szenen\ liegt. Die Dateien sind von einem
+// Python-Werkzeug erzeugt, das nicht in diesem Repository liegt.
 export type Szene = {
   key: string
   titel: string
@@ -23,6 +23,11 @@ export type Szene = {
 // Ein offener Punkt der AUFTRAG.md fuer das Panel (hooks\punkte.tsx)
 export type Punkt = {
   art: 'paket' | 'offen'
+  // Gruppe im Panel (seit 29.10.2026): startklar = Paket bei Claude, das auf nichts wartet;
+  // dich = Paket beim Nutzer oder auf ihn wartend, dazu jeder Punkt aus "## Offen …";
+  // wartet = Paket, das auf etwas anderes wartet. Quelle ist die Tabelle "Jetzt offen"
+  gruppe: 'startklar' | 'dich' | 'wartet'
+  wartetAuf: string                                    // Spalte "Wartet auf", leer wenn nichts
   titel: string
   zusatz: string                                       // Stand des Pakets oder Rest des Punkts, gekuerzt
   prompt: string                                       // was ein Klick ins Eingabefeld schreibt
@@ -34,13 +39,14 @@ export type Block = Punkte & { datei: string; mtimeMs: number }
 declare module 'claude-code' {
   interface PluginState {
     'usage-zeile': { messung: Messung | null; jetzt: number; an: boolean; clawd: string; szenen: Szene[]
-      auswahlOffen: boolean; spielt: string; favoriten: string[]; kartenStart: number
+      auswahlOffen: boolean; spielt: string; favoriten: string[]; seite: number
       ansicht: { fuenf: boolean; woche: boolean; kontext: boolean }; schwelle: number | null
       vorher: number | null; verdichtet: boolean; zeilen: Record<string, string> | null
       arbeitet: boolean; agenten: Record<string, number>   // fuer die Zeile unter jeder Antwort
       auftrag: { beginn: number; kontextDavor: number | null; verdichtet: boolean; verb: string; schluesse: string[] } | null
       neuerAuftrag: boolean
       punkteGelesen: number                                // fuer das Panel der offenen Punkte
-      punkteAuf: Record<string, boolean> }                 // je Auftragsdatei aufgeklappt oder zu
+      punkteAuf: Record<string, boolean>                   // je Auftragsdatei aufgeklappt oder zu
+      punktePfad: string }                                 // Auftragsdatei, deren Pfad gerade gezeigt wird, sonst leer
   }
 }

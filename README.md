@@ -1,7 +1,7 @@
 # Usage-Zeile mit Clawd
 
 *English: A mod for Claude Code that shows your 5-hour limit, weekly limit and context usage
-above the prompt, with an animated pixel Clawd next to it. The interface is in German.*
+above the prompt, with an animated pixel Clawd next to it. The interface is mostly in German.*
 
 Ein Mod für Claude Code. Ein Mod ist eine kleine Erweiterung, die Claude Code beim Start
 mitlädt. Dieser zeichnet über dem Eingabefeld eine Zeile mit drei Angaben und einem
@@ -24,7 +24,10 @@ zum Ende, auch während Agenten im Hintergrund arbeiten. Die Zahl ist der Beitra
 zum Kontext, `done` die Uhrzeit, zu der er fertig war.
 
 Auf Wunsch kommt ein Panel „Offene Punkte“ dazu. Es zeigt neben dem Gespräch die offenen
-Pakete und Punkte aus `AUFTRAG.md`-Dateien im Arbeitsordner.
+Pakete und Punkte aus `AUFTRAG.md`-Dateien im Arbeitsordner, je Datei ein Block, eingeteilt in
+„Startklar“, „Braucht dich“ und „Wartet“. Grundlage der Einteilung ist die Tabelle „Jetzt offen“
+in der Datei. „Braucht dich“ erkennt der Mod am Wort `Nutzer` oder an einem Entscheid in den
+Spalten „Wer ist dran“ und „Wartet auf“. Ein Klick auf ⓘ zeigt den Pfad der Datei.
 
 > **Inoffizielles Fanprojekt.** Dieser Mod ist nicht von Anthropic und steht in keiner
 > Verbindung zu Anthropic. Claude und Claude Code sind Marken von Anthropic. Clawd ist das
@@ -33,7 +36,7 @@ Pakete und Punkte aus `AUFTRAG.md`-Dateien im Arbeitsordner.
 
 ## Voraussetzungen
 
-* **Claude Code mit Unterstützung für Mods.** Getestet mit der Fassung 2.1.299, die die
+* **Claude Code mit Unterstützung für Mods.** Getestet mit der Fassung 2.1.309, die die
   Claude-Desktop-App im Code-Bereich mitbringt. Ältere Fassungen im Terminal kennen keine
   Mods.
 * **Clawd erscheint nur in der Desktop-App.** Im Terminal zeigt die Zeile nur die Zahlen,
@@ -103,8 +106,8 @@ Danach Claude Code neu starten.
 * **Schiebeschalter ganz links** schaltet die Zeile an und aus.
 * **Punkt oben rechts** klappt die Auswahl der Szenen auf. Darunter steht **≡**, wenn das
   Panel eingeschaltet ist. Es öffnet die offenen Punkte neben dem Gespräch. Jede Karte zeigt eine Vorschau.
-  *Abspielen* zeigt den ganzen Ablauf, *Auswählen* übernimmt die Szene. Das Mausrad
-  blättert die Karten.
+  *Preview* zeigt den ganzen Ablauf, *Use* übernimmt die Szene. Die Auswahl zeigt sechs Szenen
+  je Seite, ◀ und ▶ in der Kopfzeile blättern.
 * **Stern auf einer Karte** macht die Szene zum Favoriten. Favoriten stehen oben.
 * **Klick auf eine Anzeige** zeigt Details. Bei 🕖 und 📆 die Uhrzeit des Zurücksetzens,
   beim Ring, ab welcher Füllung Claude Code den Kontext automatisch verdichtet.

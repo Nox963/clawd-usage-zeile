@@ -1,6 +1,6 @@
 import { describe, expect, mock, test } from 'claude-code/testing'
 
-import { kurztitel, offenePunkte, ordneBloecke } from '../hooks/punkte'
+import { einzeilig, jetztOffen, kurztitel, offenePunkte, ordneBloecke } from '../hooks/punkte'
 
 // Eine kleine AUFTRAG.md im Aufbau der Vorlage: ein offenes, ein erledigtes und ein
 // verworfenes Paket, dazu zwei Punkte unter "Offen"
@@ -56,6 +56,12 @@ const BAND = {
 const MIT_PANEL = { options: { panel: true } }
 
 describe('offene Punkte', () => {
+  // Ein zurueckgestelltes Paket stand am 31.10.2026 weiter im Panel
+  test('laesst ein zurueckgestelltes Paket weg', () => {
+    const md = '# T\n\n## Pakete\n\n### 1 · Ruhig\n\n- **Stand:** zurückgestellt 31.10.2026 (Nutzer)\n\n### 2 · Offen\n\n- **Stand:** offen\n'
+    expect(offenePunkte(md, 'C:\\Projekt').liste.map(p => p.titel)).toEqual(['2 · Offen'])
+  })
+
   test('liest offene Pakete und Punkte, laesst abgeschlossene weg', () => {
     const p = offenePunkte(AUFTRAG, 'C:\\Projekt')
     expect(p.titel).toBe('Testvorhaben')
@@ -75,6 +81,35 @@ describe('offene Punkte', () => {
     expect(kurztitel('API-Messung: welches Modell urteilt wie gut').kurz).toBe('API-Messung')
     expect(kurztitel('Usage-Zeile mit Clawd')).toEqual({ kurz: 'Usage-Zeile mit Clawd', rest: '' })
     expect(kurztitel('Beispiel – Prüfdienst').kurz).toBe('Beispiel')
+  })
+
+  test('sortiert Pakete nach der Tabelle "Jetzt offen" in startklar, braucht dich und wartet', () => {
+    const md = [
+      '# T', '', '## Jetzt offen', '',
+      '| Paket | Was zu tun ist | Wer ist dran | Wartet auf |', '|---|---|---|---|',
+      '| 3 · Drei | x | Claude | Paket 2 (Zwei) |',
+      '| 4, 5 · Vier und Fünf | x | Nutzer | nichts |',
+      '| 2 · Zwei | x | Claude | nichts |',
+      '| 6 · Sechs | x | Claude | Freigabe des Nutzers |',
+      '| 7 · Sieben | x | Claude | Entscheid, welche Farbe es wird |', '',
+      '## Offen, braucht eine Entscheidung', '', '- **Farbe?** grau oder orange', '',
+      '## Pakete', '',
+      ...[1, 2, 3, 4, 5, 6, 7].flatMap(n => [`### ${n} · P${n}`, '', `- **Stand:** offen`, '']),
+    ].join('\n')
+    const p = offenePunkte(md, 'C:\\T')
+    const in_ = (g: string) => p.liste.filter(x => x.gruppe === g).map(x => x.titel)
+    // Tabellenreihenfolge zuerst, Paket 1 fehlt in der Tabelle und steht am Ende
+    expect(in_('startklar')).toEqual(['2 · P2', '1 · P1'])
+    expect(in_('dich')).toEqual(['4 · P4', '5 · P5', '6 · P6', '7 · P7', 'Farbe?'])
+    expect(in_('wartet')).toEqual(['3 · P3'])
+    expect(p.liste.find(x => x.titel === '3 · P3')?.wartetAuf).toBe('Paket 2 (Zwei)')
+    expect(jetztOffen('kein Text').size).toBe(0)
+  })
+
+  test('ein Eintrag verliert den Verweis in Klammern am Ende', () => {
+    expect(einzeilig('Gemini als Fremdprüfer beibehalten (Paket 6, lohnt sich Gemini)')).toBe('Gemini als Fremdprüfer beibehalten')
+    expect(einzeilig('Opus 5.5 (high) nachmessen')).toBe('Opus 5.5 (high) nachmessen')
+    expect(einzeilig('(nur Klammer)')).toBe('(nur Klammer)')
   })
 
   test('versteht den Abschnitt der Vorlage mit nummerierten Punkten', () => {
@@ -138,6 +173,19 @@ describe('offene Punkte', () => {
     expect(await ui.find({ text: /Auswahl ansehen/ })).toBeDefined()
     await ui.press({ key: 'b0-kopf' })
     expect(await ui.find({ text: /Seite 12 nachfragen/ })).toBeUndefined()
+  })
+
+  test('der Pfad steht nur nach einem Klick auf ⓘ da, ein zweiter verbirgt ihn', MIT_PANEL, async ($, on) => {
+    on('ui.open', () => ({ value: { isPlaced: true } }))
+    mock.store(on, { 'auftraege-test': DATEIEN })
+    await (await $.ui.mount({ ...BAND, surface: 'desktop' })).press({ key: 'punkte' })
+    const ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
+    expect(await ui.find({ text: /C:\\Kundin\\AUFTRAG\.md/ })).toBeUndefined()
+    await ui.press({ key: 'b0-pfad' })
+    expect(await ui.find({ text: /C:\\Kundin\\AUFTRAG\.md/ })).toBeDefined()
+    expect(await ui.find({ text: /C:\\Projekt\\skill\\AUFTRAG\.md/ })).toBeUndefined()
+    await ui.press({ key: 'b0-pfad' })
+    expect(await ui.find({ text: /C:\\Kundin\\AUFTRAG\.md/ })).toBeUndefined()
   })
 
   test('ohne AUFTRAG.md sagt das Panel das', MIT_PANEL, async ($, on) => {

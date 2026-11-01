@@ -290,15 +290,40 @@ test('die Auswahl zeigt drei flache Karten je Reihe', async ($, on) => {
   await ui.unmount()
 })
 
-test('das Mausrad blaettert die Karten reihenweise, die Kopfzeile bleibt', async () => {
-  // 13 Reihen: eine Reihe je Drehung, nicht unter 0, nicht ueber die vorletzte Reihe
-  expect(blaettere(0, 1, 13)).toBe(1)
-  expect(blaettere(0, 3, 13)).toBe(1)
-  expect(blaettere(0, -1, 13)).toBe(0)
-  expect(blaettere(11, 1, 13)).toBe(11)
-  expect(blaettere(5, -2, 13)).toBe(4)
-  expect(blaettere(0, 1, 2)).toBe(0)
-  expect(blaettere(4, 0, 13)).toBe(4)
+test('Blaettern: eine Seite weiter oder zurueck, nicht vor die erste, nicht hinter die letzte', async () => {
+  expect(blaettere(0, 1, 4)).toBe(1)
+  expect(blaettere(0, -1, 4)).toBe(0)
+  expect(blaettere(3, 1, 4)).toBe(3)
+  expect(blaettere(2, -1, 4)).toBe(1)
+  expect(blaettere(0, 1, 1)).toBe(0)
+})
+
+test('die Auswahl zeigt sechs Karten je Seite, ◀ und ▶ blaettern', async ($, on) => {
+  // acht Szenen: zwei Seiten
+  mock.store(on, { 'szenen-test': Object.fromEntries(Array.from({ length: 8 }, (_, i) =>
+    [`s${i}.json`, JSON.stringify(szene(`s${i}`, `Szene ${i}`, i))])) })
+  mock.clock(on, { now: Date.parse('2026-10-14T12:00:00Z') })
+  on('session.start', (_$, e) => ({ cwd: e.cwd }))
+  on('session.usage', () => ({ value: { startedAt: 0, context: { window: 1_000_000 }, rateLimits: [] } }))
+  await $.session.start({ cwd: '.', surface: 'desktop', isInteractive: true })
+  const ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  await ui.press({ key: 'punkt' })
+  const karten = async () => (await ui.findAll({ type: 'Button' })).map(k => k.key).filter(k => k?.startsWith('wahl-'))
+  expect(await ui.find({ text: /^Page.1.of.2$/ })).toBeDefined()
+  expect((await karten()).length).toBe(6)
+  await ui.press({ key: 'weiter' })
+  expect(await ui.find({ text: /^Page.2.of.2$/ })).toBeDefined()
+  expect(await karten()).toEqual(['wahl-s6', 'wahl-s7'])
+  await ui.press({ key: 'weiter' })
+  expect(await ui.find({ text: /^Page.2.of.2$/ })).toBeDefined()
+  await ui.press({ key: 'zurueck' })
+  expect((await karten()).length).toBe(6)
+  // beim naechsten Oeffnen wieder Seite 1
+  await ui.press({ key: 'weiter' })
+  await ui.press({ key: 'punkt' })
+  await ui.press({ key: 'punkt' })
+  expect(await ui.find({ text: /^Page.1.of.2$/ })).toBeDefined()
+  await ui.unmount()
 })
 
 test('jeder Teil ist an, bis seine Einstellung ausdruecklich false ist', async () => {
@@ -314,5 +339,15 @@ test('abgeschaltete Teile fehlen in der Zeile', { options: { clawd: false, panel
   expect((await clawds(ui)).length).toBe(0)
   expect(await ui.find({ key: 'punkt' })).toBeUndefined()
   expect(await ui.find({ key: 'punkte' })).toBeUndefined()
+  await ui.unmount()
+})
+
+test('offene Auswahl: Reihe in der Kopfzeile, keine eigene Ueberschrift, Knoepfe Use und Preview', async ($, on) => {
+  await starte($, on)
+  const ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  await ui.press({ key: 'punkt' })
+  expect(await ui.find({ text: /Welcher Clawd/ })).toBeUndefined()
+  expect(await ui.find({ text: /^Use$/ })).toBeDefined()
+  expect(await ui.find({ text: /^Preview$/ })).toBeDefined()
   await ui.unmount()
 })
