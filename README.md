@@ -1,7 +1,9 @@
 # Usage-Zeile mit Clawd
 
 *English: A mod for Claude Code that shows your 5-hour limit, weekly limit and context usage
-above the prompt, with an animated pixel Clawd next to it. The interface is mostly in German.*
+above the prompt, with an animated pixel Clawd next to it. The interface is mostly in German.
+Unofficial fan project, not affiliated with or endorsed by Anthropic. Claude, Claude Code and the
+character Clawd belong to Anthropic, and the license below grants no rights to them.*
 
 Ein Mod für Claude Code. Ein Mod ist eine kleine Erweiterung, die Claude Code beim Start
 mitlädt. Dieser zeichnet über dem Eingabefeld eine Zeile mit drei Angaben und einem
@@ -78,8 +80,10 @@ Der Mod besteht aus vier Teilen. Jeder lässt sich einzeln abschalten:
 | `antwortzeile` | Zeile unter der letzten Antwort eines Auftrags | an |
 | `panel` | Knopf ≡ und Panel „Offene Punkte“ | aus |
 
-Claude Code fragt die Einstellungen bei der Installation ab. Später ändert man sie im
-Terminal über `/config`, dort stehen sie unter `usage-zeile`. Danach lädt der Mod neu.
+Bei `/plugin install` in einer Sitzung fragt Claude Code die Einstellungen ab. Bei der Installation
+aus einer Shell fragt es nicht, dann gelten die Voreinstellungen aus der Tabelle. Später ändert
+man sie in einer Sitzung im Terminal mit `/plugin configure usage-zeile@clawd-usage-zeile` oder über
+`/config`, dort stehen sie unter `usage-zeile`. Danach lädt der Mod neu.
 
 ## Aktualisieren
 
