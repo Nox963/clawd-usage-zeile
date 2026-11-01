@@ -47,12 +47,6 @@ Spalten „Wer ist dran“ und „Wartet auf“. Ein Klick auf ⓘ zeigt den Pfa
 
 ## Installieren
 
-> **Solange das Repository privat ist**, klappt die Installation nur mit einer Einladung und
-> einer GitHub-Anmeldung auf dem eigenen Rechner. Die Einladung annehmen, dann einmal in einer
-> Shell `gh auth login` und `gh auth setup-git` ausführen. Dafür muss die GitHub CLI
-> installiert sein, siehe https://cli.github.com. Die Installation selbst fragt nicht nach
-> einer Anmeldung, sie schlägt ohne sie fehl.
-
 **In der Desktop-App:** Auf das + neben dem Eingabefeld klicken, dann *Plugins*, dann
 *Add marketplace* mit `Nox963/clawd-usage-zeile`, dann *Add plugin* und `usage-zeile` wählen.
 
